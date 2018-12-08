@@ -72,7 +72,7 @@ def get_all_likes(*, blog_identifier, api_key):
     return tqdm.tqdm(iterator(), total=liked_count)
 
 
-def get_all_posts(*, blog_identifier, api_key):
+def get_all_posts(*, blog_identifier, api_key, before=0):
     sess = create_session()
 
     params = {
@@ -93,9 +93,16 @@ def get_all_posts(*, blog_identifier, api_key):
             "reblog_info": True,
             "notes_info": True,
         }
+        if before:
+            params["before"]=before
 
         while True:
-            resp = sess.get(api_url, params=params)
+            try:
+                resp = sess.get(api_url, params=params)
+            except:
+                print("Unable to download posts before %i."%params["before"])
+                print("Call this script again in a few hours with --before=%i to download older posts."%params["before"])
+                raise
 
             posts = resp.json()["response"]["posts"]
             yield from posts

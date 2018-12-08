@@ -25,8 +25,12 @@ from sinkingship import get_all_posts, save_post_metadata
     "--dst", default="tumblr",
     help="Directory for saving metadata"
 )
-def save_metadata(blog_identifier, api_key, dst):
-    for post_data in get_all_posts(blog_identifier=blog_identifier, api_key=api_key):
+@click.option(
+    "--before", default=0, type=int, 
+    help="Timestamp to start from"
+)
+def save_metadata(blog_identifier, api_key, dst, before):
+    for post_data in get_all_posts(blog_identifier=blog_identifier, api_key=api_key, before=before):
         save_post_metadata(
             dst=os.path.join(dst, blog_identifier.replace(".", "_"), "posts"),
             post_data=post_data
