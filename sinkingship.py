@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import re
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import urlretrieve
@@ -135,6 +136,17 @@ def _download_asset(post_dir, url, suffix=""):
         print(f"Error trying to download URL {url!r} ({err})")
         return
 
+def _download_text_src(post_dir, body):
+    urls = re.findall("src=\"(https?://\S+)\"", body)
+    for url in urls:
+        name = os.path.basename(url)
+        out_path = os.path.join(post_dir, name)
+        if os.path.exists(out_path):
+            continue
+        try:
+            urlretrieve(url, out_path)
+        except HTTPError as err:
+            print(f"Error trying to download URL {url!r} ({err}) ==> {post_dir}")
 
 def _download_with_youtube_dl(post_dir, url):
     """
@@ -169,12 +181,23 @@ def save_post_media_files(info_path):
     post_dir = os.path.dirname(info_path)
     post_id = post_data["id"]
 
-    if post_data["type"] == "photo":
+    if post_data["type"] in ("photo", "link"):
+        if not "photos" in post_data:
+            return
         for photo in post_data["photos"]:
             _download_asset(post_dir=post_dir, url=photo["original_size"]["url"])
 
-    elif post_data["type"] in ("answer", "chat", "link", "quote", "text"):
+    elif post_data["type"] == "chat":
         return
+    
+    elif post_data["type"] == "answer":
+        _download_text_src(post_dir, post_data["answer"])
+    
+    elif post_data["type"] == "text":
+        _download_text_src(post_dir, post_data["body"])
+    
+    elif post_data["type"] == "quote":
+        _download_text_src(post_dir, post_data["source"])
 
     elif post_data["type"] == "video":
         players = [p for p in post_data["player"] if p["embed_code"]]
